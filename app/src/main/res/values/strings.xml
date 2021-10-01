@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">NotificationDemoProject</string>
+    <string name="CHANNEL_ID">07</string>
+    <string name="CHANNEL">News</string>
+    <string name="CHANNEL_DESCRIPTION">Get informed with new updates</string>
+</resources>
