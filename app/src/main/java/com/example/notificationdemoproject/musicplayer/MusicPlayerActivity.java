@@ -13,18 +13,13 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.PorterDuff;
 import android.media.MediaPlayer;
-import android.media.audiofx.Visualizer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
-import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
-
-import com.example.notificationdemoproject.CustomMusicNotificationActivity;
 import com.example.notificationdemoproject.R;
 import com.example.notificationdemoproject.databinding.ActivityMusicPlayerBinding;
 import com.example.notificationdemoproject.service.CreateNotifications;
@@ -104,7 +99,7 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
         mediaPlayer.start();
 
         CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                R.drawable.ic_pause, position, mySongs.size() -1);
+                R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
         binding.playbtn.setBackgroundResource(R.drawable.ic_pause);
         binding.txtsn.setText(mySongs.get(position).getName());
 
@@ -246,7 +241,7 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
             case R.id.playbtn:
                 if (mediaPlayer.isPlaying()){
                     CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                            R.drawable.ic_play, position, mySongs.size() -1);
+                            R.drawable.ic_play, position, mySongs.size() -1, mediaPlayer);
 
                     binding.playbtn.setBackgroundResource(R.drawable.ic_play);
                     binding.txtsn.setText(mySongs.get(position).getName());
@@ -255,7 +250,7 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
                     isPlay = true;
                 }else {
                     CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                            R.drawable.ic_pause, position, mySongs.size() -1);
+                            R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
 
                     binding.txtsn.setText(mySongs.get(position).getName());
                     binding.playbtn.setBackgroundResource(R.drawable.ic_pause);
@@ -269,13 +264,18 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
                 mediaPlayer.stop();
                 mediaPlayer.release();
                 position = ((position+1)%mySongs.size());
+
                 Uri u = Uri.parse(mySongs.get(position).toString());
                 mediaPlayer = MediaPlayer.create(getApplicationContext(),u);
                 sname = mySongs.get(position).getName();
                 txtSName.setText(sname);
                 mediaPlayer.start();
+
                 binding.playbtn.setBackgroundResource(R.drawable.ic_pause);
                 startAnimation(binding.imageview);
+
+                CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
+                        R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
 
                 int audiosessionId = mediaPlayer.getAudioSessionId();
                 if (audiosessionId != -1){
@@ -293,8 +293,12 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
                 sname = mySongs.get(position).getName();
                 txtSName.setText(sname);
                 mediaPlayer.start();
+
                 binding.playbtn.setBackgroundResource(R.drawable.ic_pause);
                 startAnimation(binding.imageview);
+
+                CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
+                        R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
 
                 int audiosessionIdPre = mediaPlayer.getAudioSessionId();
                 if (audiosessionIdPre != -1){
@@ -337,16 +341,38 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
 
     @Override
     public void onTrackPrevious() {
-        position --;
+
+        mediaPlayer.stop();
+        mediaPlayer.release();
+        position = ((position-1)<0)?(mySongs.size()-1):(position-1);
+
+        Uri u1 = Uri.parse(mySongs.get(position).toString());
+        mediaPlayer = MediaPlayer.create(getApplicationContext(),u1);
+        sname = mySongs.get(position).getName();
+        txtSName.setText(sname);
+        mediaPlayer.start();
+
+        binding.playbtn.setBackgroundResource(R.drawable.ic_pause);
+        startAnimation(binding.imageview);
+
         CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                R.drawable.ic_pause, position, mySongs.size() -1);
-        binding.txtsn.setText(mySongs.get(position).getName());
+                R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
+
+        int audiosessionIdPre = mediaPlayer.getAudioSessionId();
+        if (audiosessionIdPre != -1){
+            visualizer.setAudioSessionId(audiosessionIdPre);
+        }
+
+       /* position --;
+        CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
+                R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
+        binding.txtsn.setText(mySongs.get(position).getName());*/
     }
 
     @Override
     public void onTrackPlay() {
         CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                R.drawable.ic_play, position, mySongs.size() -1);
+                R.drawable.ic_play, position, mySongs.size() -1, mediaPlayer);
         binding.playbtn.setBackgroundResource(R.drawable.ic_play);
         binding.txtsn.setText(mySongs.get(position).getName());
         mediaPlayer.pause();
@@ -356,7 +382,7 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
     @Override
     public void onTrackPause() {
         CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                R.drawable.ic_pause, position, mySongs.size() -1);
+                R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
         binding.playbtn.setBackgroundResource(R.drawable.ic_pause);
         binding.txtsn.setText(mySongs.get(position).getName());
         mediaPlayer.start();
@@ -365,9 +391,29 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
 
     @Override
     public void onTrackNext() {
-        position ++;
+        mediaPlayer.stop();
+        mediaPlayer.release();
+        position = ((position+1)%mySongs.size());
+
+        Uri u = Uri.parse(mySongs.get(position).toString());
+        mediaPlayer = MediaPlayer.create(getApplicationContext(),u);
+        sname = mySongs.get(position).getName();
+        txtSName.setText(sname);
+        mediaPlayer.start();
+
+        binding.playbtn.setBackgroundResource(R.drawable.ic_pause);
+        startAnimation(binding.imageview);
+
+        CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
+                R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
+
+        int audiosessionId = mediaPlayer.getAudioSessionId();
+        if (audiosessionId != -1){
+            visualizer.setAudioSessionId(audiosessionId);
+        }
+        /*position ++;
         CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
                 R.drawable.ic_pause, position, mySongs.size() -1);
-        binding.txtsn.setText(mySongs.get(position).getName());
+        binding.txtsn.setText(mySongs.get(position).getName());*/
     }
 }

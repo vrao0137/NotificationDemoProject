@@ -62,7 +62,7 @@ public class SongsListActivity extends AppCompatActivity {
 
         File[] files = file.listFiles();
 
-        for (File singlefile: files){
+        for (File singlefile: files != null ? files : new File[0]){
             if (singlefile.isDirectory() && !singlefile.isHidden()){
                 arrayList.addAll(findSong(singlefile));
               //  arrayList.add(singlefile);
