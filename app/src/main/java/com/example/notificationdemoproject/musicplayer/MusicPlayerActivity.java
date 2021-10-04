@@ -8,14 +8,17 @@ import android.animation.ObjectAnimator;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.graphics.PorterDuff;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.SeekBar;
@@ -50,11 +53,18 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
 
     Thread updateSeekbar;
 
+    CreateNotifications createNotifications;
+    private boolean isBound;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         binding = ActivityMusicPlayerBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+        Intent intent = new Intent(this , CreateNotifications.class);
+        startService(intent);
+        bindService(intent ,boundServiceConnection ,BIND_AUTO_CREATE);
 
         // Initialize IDs-----------
         txtSName = binding.txtsn;
@@ -173,6 +183,29 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
             visualizer.setAudioSessionId(audiosessionId);
         }
 
+    }
+    private ServiceConnection boundServiceConnection;
+
+    {
+        boundServiceConnection = new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
+
+                CreateNotifications.MyBinder binderBridge = (CreateNotifications.MyBinder) service;
+                createNotifications = binderBridge.currentService();
+                isBound = true;
+
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+
+                isBound = false;
+                createNotifications = null;
+
+
+            }
+        };
     }
 
     public void startAnimation(View view){

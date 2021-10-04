@@ -6,6 +6,7 @@ import android.Manifest;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -78,6 +79,8 @@ public class SongsListActivity extends AppCompatActivity {
     void displaySongs(){
         final ArrayList<File> mySongs = findSong(Environment.getExternalStorageDirectory());
          items = new String[mySongs.size()];
+
+        Log.e(TAG,"Environment:- "+Environment.getExternalStorageDirectory());
 
          for (int i=0; i<mySongs.size(); i++){
              items[i] = mySongs.get(i).getName().toString().replace(".mp3","").replace(".wav","");
