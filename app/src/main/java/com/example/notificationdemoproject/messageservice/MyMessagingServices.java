@@ -1,7 +1,5 @@
-package com.example.notificationdemoproject.service;
+package com.example.notificationdemoproject.messageservice;
 import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -18,10 +16,7 @@ import com.example.notificationdemoproject.NotificationDetailsActivity;
 import com.example.notificationdemoproject.R;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -31,7 +26,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Objects;
 
-import static android.telephony.AvailableNetworkInfo.PRIORITY_HIGH;
 import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_HIGH;
 
 public class MyMessagingServices extends FirebaseMessagingService {

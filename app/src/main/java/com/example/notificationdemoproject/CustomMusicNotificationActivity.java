@@ -12,9 +12,9 @@ import android.os.Bundle;
 import android.view.View;
 
 import com.example.notificationdemoproject.databinding.ActivityCustomMusicNotificationBinding;
-import com.example.notificationdemoproject.service.CreateNotifications;
-import com.example.notificationdemoproject.service.OnClearFromRecentServices;
-import com.example.notificationdemoproject.service.Playable;
+import com.example.notificationdemoproject.musicplayer.service.NotificationService;
+import com.example.notificationdemoproject.messageservice.OnClearFromRecentServices;
+import com.example.notificationdemoproject.musicplayer.service.Playable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,7 +69,7 @@ public class CustomMusicNotificationActivity extends AppCompatActivity implement
     private void createChannel(){
         NotificationChannel channel = null;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            channel = new NotificationChannel(CreateNotifications.CHANNEL_ID,"KOD Dev", NotificationManager.IMPORTANCE_LOW);
+            channel = new NotificationChannel(NotificationService.CHANNEL_ID,"KOD Dev", NotificationManager.IMPORTANCE_LOW);
 
             notificationManager = getSystemService(NotificationManager.class);
 
@@ -85,17 +85,17 @@ public class CustomMusicNotificationActivity extends AppCompatActivity implement
         public void onReceive(Context context, Intent intent) {
             String action = intent.getExtras().getString("actionname");
             switch (action){
-                case CreateNotifications.ACTION_PREVIOUS:
+                case NotificationService.ACTION_PREVIOUS:
                     onTrackPrevious();
                     break;
-                case CreateNotifications.ACTION_PLAY:
+                case NotificationService.ACTION_PLAY:
                     if (isPlaying){
                         onTrackPause();
                     }else {
                         onTrackPlay();
                     }
                     break;
-                case CreateNotifications.ACTION_NEXT:
+                case NotificationService.ACTION_NEXT:
                     onTrackNext();
                     break;
 

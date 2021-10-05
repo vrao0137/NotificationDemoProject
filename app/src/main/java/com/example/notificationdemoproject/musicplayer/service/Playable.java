@@ -1,4 +1,4 @@
-package com.example.notificationdemoproject.service;
+package com.example.notificationdemoproject.musicplayer.service;
 
 public interface Playable {
     void onTrackPrevious();

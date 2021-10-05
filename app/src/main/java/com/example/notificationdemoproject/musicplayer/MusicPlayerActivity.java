@@ -1,8 +1,5 @@
 package com.example.notificationdemoproject.musicplayer;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.app.NotificationChannel;
@@ -19,15 +16,19 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.SeekBar;
 import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.example.notificationdemoproject.R;
 import com.example.notificationdemoproject.databinding.ActivityMusicPlayerBinding;
-import com.example.notificationdemoproject.service.CreateNotifications;
-import com.example.notificationdemoproject.service.OnClearFromRecentServices;
-import com.example.notificationdemoproject.service.Playable;
+import com.example.notificationdemoproject.musicplayer.service.NotificationService;
+import com.example.notificationdemoproject.musicplayer.service.Playable;
 import com.gauravk.audiovisualizer.visualizer.BarVisualizer;
 
 import java.io.File;
@@ -38,23 +39,22 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
     private final String TAG = MusicPlayerActivity.class.getSimpleName();
     private ActivityMusicPlayerBinding binding;
 
-    public static final String EXTRA_NAME = "song_name";
     static MediaPlayer mediaPlayer;
     int position;
-    String sname;
-    ArrayList<File> mySongs;
+    private String sname;
+    private ArrayList<File> mySongs;
 
-    NotificationManager notificationManager;
+    private NotificationManager notificationManager;
     boolean isPlay = false;
 
-    TextView txtSName,txtSStart,txtSStop;
-    SeekBar seekMusic;
-    BarVisualizer visualizer;
+    private TextView txtSName, txtSStart, txtSStop;
+    private SeekBar seekMusic;
+    private BarVisualizer visualizer;
 
-    Thread updateSeekbar;
+    private Thread updateSeekbar;
 
-    CreateNotifications createNotifications;
-    private boolean isBound;
+    NotificationService createNotifications;
+    boolean isBound;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,33 +62,46 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
         binding = ActivityMusicPlayerBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        Intent intent = new Intent(this , CreateNotifications.class);
+        Intent intent = new Intent(this, NotificationService.class);
         startService(intent);
-        bindService(intent ,boundServiceConnection ,BIND_AUTO_CREATE);
+        bindService(intent, boundServiceConnection, BIND_AUTO_CREATE);
 
         // Initialize IDs-----------
+        initializeIds();
+
+        // SetOnclickListner
+        initializeSetOnClickListener();
+
+        // InitializeMediaPlayer
+        initializeMediaPlayer();
+
+    }
+
+    private void initializeIds() {
         txtSName = binding.txtsn;
         txtSStart = binding.txtsstart;
         txtSStop = binding.txtsstop;
         seekMusic = binding.seekbar;
         visualizer = binding.blast;
+    }
 
-        // SetOnclickListner
+    private void initializeSetOnClickListener() {
         binding.playbtn.setOnClickListener(this);
         binding.btnnext.setOnClickListener(this);
         binding.btnprev.setOnClickListener(this);
         binding.btnff.setOnClickListener(this);
         binding.btnfr.setOnClickListener(this);
+    }
 
+    private void initializeMediaPlayer() {
         Objects.requireNonNull(getSupportActionBar()).setTitle("Now Playing");
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setDisplayShowHomeEnabled(true);
 
         createChannel();
         registerReceiver(broadcastReceiver, new IntentFilter("TRACKS_TRACKS"));
-        startService(new Intent(getBaseContext(), OnClearFromRecentServices.class));
 
-        if (mediaPlayer != null){
+        if (mediaPlayer != null) {
             mediaPlayer.stop();
             mediaPlayer.release();
         }
@@ -96,11 +109,15 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
         Intent i = getIntent();
         Bundle bundle = i.getExtras();
 
-        mySongs = (ArrayList)bundle.getParcelableArrayList("songs");
+        mySongs = (ArrayList) bundle.getParcelableArrayList("songs");
         String songName = i.getStringExtra("songname");
-        position = bundle.getInt("pos",0);
+        position = bundle.getInt("pos", 0);
         txtSName.setSelected(true);
 
+        initializeSongsList();
+    }
+
+    private void initializeSongsList() {
         Uri uri = Uri.parse(mySongs.get(position).toString());
         sname = mySongs.get(position).getName();
         txtSName.setText(sname);
@@ -108,32 +125,32 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
         mediaPlayer = MediaPlayer.create(getApplicationContext(), uri);
         mediaPlayer.start();
 
-        CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
+        NotificationService.createNotifications(MusicPlayerActivity.this, mySongs.get(position),
+                R.drawable.ic_pause, position, mySongs.size() - 1, mediaPlayer, 1f);
         binding.playbtn.setBackgroundResource(R.drawable.ic_pause);
         binding.txtsn.setText(mySongs.get(position).getName());
 
-      //  onTrackPlay();
+        upDatesSeekBar();
+    }
 
-        updateSeekbar = new Thread()
-        {
+    private void upDatesSeekBar() {
+        updateSeekbar = new Thread() {
             @Override
             public void run() {
                 int totalDuration = mediaPlayer.getDuration();
                 int currentPosition = 0;
 
-                while (currentPosition<totalDuration){
+                while (currentPosition < totalDuration) {
                     try {
-                        sleep(500);
+                        sleep(400);
                         currentPosition = mediaPlayer.getCurrentPosition();
                         seekMusic.setProgress(currentPosition);
-                    }catch (InterruptedException | IllegalAccessError e){
+                    } catch (InterruptedException | IllegalAccessError e) {
                         e.printStackTrace();
                     }
                 }
             }
         };
-
 
         seekMusic.setMax(mediaPlayer.getDuration());
         updateSeekbar.start();
@@ -153,6 +170,8 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
                 mediaPlayer.seekTo(seekBar.getProgress());
+                NotificationService.createNotifications(MusicPlayerActivity.this, mySongs.get(position),
+                        R.drawable.ic_pause, position, mySongs.size() - 1, mediaPlayer, 1f);
             }
         });
 
@@ -167,9 +186,9 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
             public void run() {
                 String currentTime = createTime(mediaPlayer.getCurrentPosition());
                 txtSStart.setText(currentTime);
-                handler.postDelayed(this,delay);
+                handler.postDelayed(this, delay);
             }
-        },delay);
+        }, delay);
 
         mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
             @Override
@@ -179,66 +198,62 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
         });
 
         int audiosessionId = mediaPlayer.getAudioSessionId();
-        if (audiosessionId != -1){
+        if (audiosessionId != -1) {
             visualizer.setAudioSessionId(audiosessionId);
         }
-
     }
-    private ServiceConnection boundServiceConnection;
+
+    private final ServiceConnection boundServiceConnection;
 
     {
         boundServiceConnection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
 
-                CreateNotifications.MyBinder binderBridge = (CreateNotifications.MyBinder) service;
+                NotificationService.MyBinder binderBridge = (NotificationService.MyBinder) service;
                 createNotifications = binderBridge.currentService();
                 isBound = true;
-
             }
 
             @Override
             public void onServiceDisconnected(ComponentName name) {
-
                 isBound = false;
                 createNotifications = null;
-
-
             }
         };
     }
 
-    public void startAnimation(View view){
-        ObjectAnimator animator = ObjectAnimator.ofFloat(binding.imageview,"rotation", 0f,360f);
+    public void startAnimation(View view) {
+        ObjectAnimator animator = ObjectAnimator.ofFloat(binding.imageview, "rotation", 0f, 360f);
         animator.setDuration(1000);
         AnimatorSet animatorSet = new AnimatorSet();
         animatorSet.playTogether(animator);
         animatorSet.start();
     }
 
-    public String createTime(int duration){
+    public String createTime(int duration) {
         String time = "";
-        int min = duration/1000/60;
-        int sec = duration/1000%60;
+        int min = duration / 1000 / 60;
+        int sec = duration / 1000 % 60;
 
-        time+=min+":";
+        time += min + ":";
 
-        if (sec<10){
-            time+="0";
+        if (sec < 10) {
+            time += "0";
         }
-        time+=sec;
+        time += sec;
 
         return time;
     }
 
-    private void createChannel(){
+    private void createChannel() {
         NotificationChannel channel = null;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            channel = new NotificationChannel(CreateNotifications.CHANNEL_ID,"KOD Dev", NotificationManager.IMPORTANCE_LOW);
+            channel = new NotificationChannel(NotificationService.CHANNEL_ID, "KOD Dev", NotificationManager.IMPORTANCE_LOW);
 
             notificationManager = getSystemService(NotificationManager.class);
 
-            if (notificationManager != null){
+            if (notificationManager != null) {
                 notificationManager.createNotificationChannel(channel);
             }
         }
@@ -249,18 +264,18 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getExtras().getString("actionname");
-            switch (action){
-                case CreateNotifications.ACTION_PREVIOUS:
+            switch (action) {
+                case NotificationService.ACTION_PREVIOUS:
                     onTrackPrevious();
                     break;
-                case CreateNotifications.ACTION_PLAY:
-                    if (isPlay){
+                case NotificationService.ACTION_PLAY:
+                    if (isPlay) {
                         onTrackPause();
-                    }else {
+                    } else {
                         onTrackPlay();
                     }
                     break;
-                case CreateNotifications.ACTION_NEXT:
+                case NotificationService.ACTION_NEXT:
                     onTrackNext();
                     break;
 
@@ -268,22 +283,23 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
         }
     };
 
+
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.playbtn:
-                if (mediaPlayer.isPlaying()){
-                    CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                            R.drawable.ic_play, position, mySongs.size() -1, mediaPlayer);
+                if (mediaPlayer.isPlaying()) {
+                    NotificationService.createNotifications(MusicPlayerActivity.this, mySongs.get(position),
+                            R.drawable.ic_play, position, mySongs.size() - 1, mediaPlayer, 0f);
 
                     binding.playbtn.setBackgroundResource(R.drawable.ic_play);
                     binding.txtsn.setText(mySongs.get(position).getName());
 
                     mediaPlayer.pause();
                     isPlay = true;
-                }else {
-                    CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                            R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
+                } else {
+                    NotificationService.createNotifications(MusicPlayerActivity.this, mySongs.get(position),
+                            R.drawable.ic_pause, position, mySongs.size() - 1, mediaPlayer, 1f);
 
                     binding.txtsn.setText(mySongs.get(position).getName());
                     binding.playbtn.setBackgroundResource(R.drawable.ic_pause);
@@ -296,10 +312,10 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
             case R.id.btnnext:
                 mediaPlayer.stop();
                 mediaPlayer.release();
-                position = ((position+1)%mySongs.size());
+                position = ((position + 1) % mySongs.size());
 
                 Uri u = Uri.parse(mySongs.get(position).toString());
-                mediaPlayer = MediaPlayer.create(getApplicationContext(),u);
+                mediaPlayer = MediaPlayer.create(getApplicationContext(), u);
                 sname = mySongs.get(position).getName();
                 txtSName.setText(sname);
                 mediaPlayer.start();
@@ -307,11 +323,11 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
                 binding.playbtn.setBackgroundResource(R.drawable.ic_pause);
                 startAnimation(binding.imageview);
 
-                CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                        R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
+                NotificationService.createNotifications(MusicPlayerActivity.this, mySongs.get(position),
+                        R.drawable.ic_pause, position, mySongs.size() - 1, mediaPlayer, 1f);
 
                 int audiosessionId = mediaPlayer.getAudioSessionId();
-                if (audiosessionId != -1){
+                if (audiosessionId != -1) {
                     visualizer.setAudioSessionId(audiosessionId);
                 }
                 break;
@@ -319,10 +335,10 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
             case R.id.btnprev:
                 mediaPlayer.stop();
                 mediaPlayer.release();
-                position = ((position-1)<0)?(mySongs.size()-1):(position-1);
+                position = ((position - 1) < 0) ? (mySongs.size() - 1) : (position - 1);
 
                 Uri u1 = Uri.parse(mySongs.get(position).toString());
-                mediaPlayer = MediaPlayer.create(getApplicationContext(),u1);
+                mediaPlayer = MediaPlayer.create(getApplicationContext(), u1);
                 sname = mySongs.get(position).getName();
                 txtSName.setText(sname);
                 mediaPlayer.start();
@@ -330,31 +346,31 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
                 binding.playbtn.setBackgroundResource(R.drawable.ic_pause);
                 startAnimation(binding.imageview);
 
-                CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                        R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
+                NotificationService.createNotifications(MusicPlayerActivity.this, mySongs.get(position),
+                        R.drawable.ic_pause, position, mySongs.size() - 1, mediaPlayer, 1f);
 
                 int audiosessionIdPre = mediaPlayer.getAudioSessionId();
-                if (audiosessionIdPre != -1){
+                if (audiosessionIdPre != -1) {
                     visualizer.setAudioSessionId(audiosessionIdPre);
                 }
                 break;
 
             case R.id.btnff:
-                if (mediaPlayer.isPlaying()){
-                    mediaPlayer.seekTo(mediaPlayer.getCurrentPosition()+10000);
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() + 10000);
                 }
                 break;
 
             case R.id.btnfr:
-                if (mediaPlayer.isPlaying()){
-                    mediaPlayer.seekTo(mediaPlayer.getCurrentPosition()-10000);
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() - 10000);
                 }
         }
     }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == android.R.id.home){
+        if (item.getItemId() == android.R.id.home) {
             onBackPressed();
         }
         return super.onOptionsItemSelected(item);
@@ -362,10 +378,8 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
 
     @Override
     protected void onDestroy() {
-        if (visualizer != null){
+        if (visualizer != null) {
             visualizer.release();
-        }else {
-
         }
         notificationManager.cancelAll();
         unregisterReceiver(broadcastReceiver);
@@ -377,10 +391,10 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
 
         mediaPlayer.stop();
         mediaPlayer.release();
-        position = ((position-1)<0)?(mySongs.size()-1):(position-1);
+        position = ((position - 1) < 0) ? (mySongs.size() - 1) : (position - 1);
 
         Uri u1 = Uri.parse(mySongs.get(position).toString());
-        mediaPlayer = MediaPlayer.create(getApplicationContext(),u1);
+        mediaPlayer = MediaPlayer.create(getApplicationContext(), u1);
         sname = mySongs.get(position).getName();
         txtSName.setText(sname);
         mediaPlayer.start();
@@ -388,24 +402,20 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
         binding.playbtn.setBackgroundResource(R.drawable.ic_pause);
         startAnimation(binding.imageview);
 
-        CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
+        NotificationService.createNotifications(MusicPlayerActivity.this, mySongs.get(position),
+                R.drawable.ic_pause, position, mySongs.size() - 1, mediaPlayer, 1f);
 
         int audiosessionIdPre = mediaPlayer.getAudioSessionId();
-        if (audiosessionIdPre != -1){
+        if (audiosessionIdPre != -1) {
             visualizer.setAudioSessionId(audiosessionIdPre);
         }
 
-       /* position --;
-        CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
-        binding.txtsn.setText(mySongs.get(position).getName());*/
     }
 
     @Override
     public void onTrackPlay() {
-        CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                R.drawable.ic_play, position, mySongs.size() -1, mediaPlayer);
+        NotificationService.createNotifications(MusicPlayerActivity.this, mySongs.get(position),
+                R.drawable.ic_play, position, mySongs.size() - 1, mediaPlayer, 1f);
         binding.playbtn.setBackgroundResource(R.drawable.ic_play);
         binding.txtsn.setText(mySongs.get(position).getName());
         mediaPlayer.pause();
@@ -414,8 +424,8 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
 
     @Override
     public void onTrackPause() {
-        CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
+        NotificationService.createNotifications(MusicPlayerActivity.this, mySongs.get(position),
+                R.drawable.ic_pause, position, mySongs.size() - 1, mediaPlayer, 0f);
         binding.playbtn.setBackgroundResource(R.drawable.ic_pause);
         binding.txtsn.setText(mySongs.get(position).getName());
         mediaPlayer.start();
@@ -426,10 +436,10 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
     public void onTrackNext() {
         mediaPlayer.stop();
         mediaPlayer.release();
-        position = ((position+1)%mySongs.size());
+        position = ((position + 1) % mySongs.size());
 
         Uri u = Uri.parse(mySongs.get(position).toString());
-        mediaPlayer = MediaPlayer.create(getApplicationContext(),u);
+        mediaPlayer = MediaPlayer.create(getApplicationContext(), u);
         sname = mySongs.get(position).getName();
         txtSName.setText(sname);
         mediaPlayer.start();
@@ -437,16 +447,13 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
         binding.playbtn.setBackgroundResource(R.drawable.ic_pause);
         startAnimation(binding.imageview);
 
-        CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                R.drawable.ic_pause, position, mySongs.size() -1, mediaPlayer);
+        NotificationService.createNotifications(MusicPlayerActivity.this, mySongs.get(position),
+                R.drawable.ic_pause, position, mySongs.size() - 1, mediaPlayer, 1f);
 
         int audiosessionId = mediaPlayer.getAudioSessionId();
-        if (audiosessionId != -1){
+        if (audiosessionId != -1) {
             visualizer.setAudioSessionId(audiosessionId);
         }
-        /*position ++;
-        CreateNotifications.createNotifications(MusicPlayerActivity.this,mySongs.get(position),
-                R.drawable.ic_pause, position, mySongs.size() -1);
-        binding.txtsn.setText(mySongs.get(position).getName());*/
+
     }
 }
