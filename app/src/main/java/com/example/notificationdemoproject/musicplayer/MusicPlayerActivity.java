@@ -94,9 +94,9 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
     }
 
     private void initializeMediaPlayer() {
-        Objects.requireNonNull(getSupportActionBar()).setTitle("Now Playing");
+        /*Objects.requireNonNull(getSupportActionBar()).setTitle("Now Playing");
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setDisplayShowHomeEnabled(true);
+        getSupportActionBar().setDisplayShowHomeEnabled(true);*/
 
         createChannel();
         registerReceiver(broadcastReceiver, new IntentFilter("TRACKS_TRACKS"));
@@ -249,7 +249,7 @@ public class MusicPlayerActivity extends AppCompatActivity implements View.OnCli
     private void createChannel() {
         NotificationChannel channel = null;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            channel = new NotificationChannel(NotificationService.CHANNEL_ID, "KOD Dev", NotificationManager.IMPORTANCE_LOW);
+            channel = new NotificationChannel(NotificationService.CHANNEL_ID, "Vishal", NotificationManager.IMPORTANCE_LOW);
 
             notificationManager = getSystemService(NotificationManager.class);
 
